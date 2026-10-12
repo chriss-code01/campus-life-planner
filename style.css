@@ -949,4 +949,24 @@ kbd {
   }
 }
 
+.about-contact {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  line-height: 1.8;
+}
+
+.about-contact a {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere; /* long links wrap on narrow phones */
+}
+
+.about-contact a:hover,
+.about-contact a:focus-visible {
+  text-decoration: underline;
+}
+
 
