@@ -373,7 +373,7 @@ function renderUpcoming() {
                 '<span class="badge ' + item.type + '">' + typeText + "</span> " +
                 "<strong>" + escape(item.title) + "</strong>" +
               "</div>" +
-              '<span class="upcoming-date">' (item.date) + "</span>" +
+              '<span class="upcoming-date">' + formatDate(item.date) + "</span>" +
             "</div>";
   });
   box.innerHTML = html;
