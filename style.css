@@ -320,6 +320,15 @@ textarea:focus {
   font-weight: 700;
 }
 
+mark {
+  background-color: #fde68a;
+  color: #1a1f3d;
+  padding: 0 2px;
+  border-radius: 3px;
+  text-decoration: underline;
+  text-decoration-color: #b45309;
+  text-underline-offset: 2px;
+}
 
 .button {
   flex: 1;
@@ -401,6 +410,23 @@ textarea {
 
 .form-buttons {
   margin-top: 20px;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field-error {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input.invalid,
+select.invalid,
+textarea.invalid {
+  border-color: var(--red);
 }
 
 .toolbar {

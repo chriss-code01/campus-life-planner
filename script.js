@@ -32,6 +32,9 @@ const modal = document.getElementById("modal");
 
 
 
+const { validateTitle, validateTags, validateDuration, validateDate, compileSearchRegex, escapeRegExp } = CampusRules;
+
+
 function loadData() {
   try {
     const savedItems = localStorage.getItem(ITEMS_KEY);
@@ -414,6 +417,30 @@ function matchesFilter(item) {
   return true; // "all"
 }
 
+
+let highlightRegex = null;
+
+
+function highlightText(text) {
+  if (!highlightRegex || !text) {
+    return escape(text);
+  }
+  let result = "";
+  let last = 0;
+  let match;
+  highlightRegex.lastIndex = 0;
+  while ((match = highlightRegex.exec(text)) !== null) {
+    if (match[0] === "") {
+      highlightRegex.lastIndex++; 
+      continue;
+    }
+    result += escapeHtml(text.slice(last, match.index)) +
+              "<mark>" + escapeHtml(match[0]) + "</mark>";
+    last = match.index + match[0].length;
+  }
+  return result + escapeHtml(text.slice(last));
+}
+
 function matchesSearch(item, searchText, regex) {
   if (searchText === "") {
     return true;
@@ -436,16 +463,22 @@ function getVisibleItems() {
   let regex = null;
 
   errorBox.style.display = "none";
+  highlightRegex = null;
 
-  
-  if (searchText !== "" && regexCheckbox.checked) {
-    try {
-      regex = new RegExp(searchText, "i");
-    } catch (error) {
-      errorBox.textContent = "Invalid regex: " + error.message;
-      errorBox.style.display = "block";
-      return items.slice(); 
+  if (searchText !== "") {
+    
+    if (regexCheckbox.checked) {
+      const result = compileSearchRegex(searchText);
+      if (result.error) {
+        errorBox.textContent = "Invalid regex: " + result.error;
+        errorBox.style.display = "block";
+        return items.slice(); 
+      }
+      regex = result.regex;
     }
+
+    // Global version of the same pattern, used to wrap matches in <mark>
+    highlightRegex = new RegExp(regex ? regex.source : escapeRegExp(searchText), "gi");
   }
 
   const visible = items.filter(function (item) {
@@ -521,18 +554,18 @@ function buildRow(item) {
   let tags = "—";
   if (item.tags.length > 0) {
     tags = item.tags.map(function (tag) {
-      return '<span class="tag">#' + escape(tag) + "</span>";
+      return '<span class="tag">' + highlightText("#" + tag) + "</span>";
     }).join("");
   }
 
   const titleClass = item.done ? "finished" : "";
-  const notes = item.notes ? '<span class="note-text">' + escape(item.notes.slice(0, 80)) + "</span>" : "";
+  const notes = item.notes ? '<span class="note-text">' + highlightText(item.notes.slice(0, 80))+ "</span>" : "";
   const dateClass = overdue ? "overdue-date" : "";
   const typeText = isTask ? "📋 Task" : "📅 Event";
 
   return "<tr>" +
     '<td class="check-cell">' + checkbox + "</td>" +
-    '<td class="title-cell"><span class="' + titleClass + '">' + escape(item.title) + "</span> " + status + notes + "</td>" +
+    '<td class="title-cell"><span class="' + titleClass + '">' + highlightText(item.title) + "</span> " + status + notes + "</td>" +
     '<td data-label="Type"><span class="badge ' + item.type + '">' + typeText + "</span></td>" +
     '<td data-label="Date" class="' + dateClass + '">' +Dateformat(item.date) + "</td>" +
     '<td data-label="Duration">' + formatDuration(item.duration) + "</td>" +
@@ -617,14 +650,47 @@ itemsBody.addEventListener("change", function (event) {
 });
 
 
+// Which validator checks which field, and where its message is shown
+const FIELD_RULES = {
+  "item-title":    { errorId: "title-error",    check: validateTitle },
+  "item-date":     { errorId: "date-error",     check: validateDate },
+  "item-duration": { errorId: "duration-error", check: validateDuration },
+  "item-tags":     { errorId: "tags-error",     check: validateTags }
+};
 
+// Check one field and show (or clear) its inline message
+function checkField(fieldId) {
+  const rule = FIELD_RULES[fieldId];
+  const input = document.getElementById(fieldId);
+  const result = rule.check(input.value);
+  document.getElementById(rule.errorId).textContent = result.valid ? "" : result.message;
+  input.classList.toggle("invalid", !result.valid);
+  input.setAttribute("aria-invalid", result.valid ? "false" : "true");
+  return result;
+}
+
+function clearFormErrors() {
+  Object.keys(FIELD_RULES).forEach(function (fieldId) {
+    const input = document.getElementById(fieldId);
+    document.getElementById(FIELD_RULES[fieldId].errorId).textContent = "";
+    input.classList.remove("invalid");
+    input.setAttribute("aria-invalid", "false");
+  });
+}
+
+// Real-time feedback while typing
+Object.keys(FIELD_RULES).forEach(function (fieldId) {
+  document.getElementById(fieldId).addEventListener("input", function () {
+    checkField(fieldId);
+  });
+});
 
 function resetForm() {
   itemForm.reset();
   document.getElementById("item-id").value = "";
   document.getElementById("item-priority").value = "2";
   document.getElementById("editor-title").textContent = "Add item";
-  document.getElementById("title-error").style.display = "none";
+  clearFormErrors();
 }
 
 
@@ -641,7 +707,7 @@ function startEdit(id) {
   document.getElementById("item-priority").value = item.priority;
   document.getElementById("item-tags").value = item.tags.join(", ");
   document.getElementById("item-notes").value = item.notes;
-  document.getElementById("title-error").style.display = "none";
+  clearFormErrors();
 
   showPage("editor");
   document.getElementById("editor-title").textContent = "Edit item";
@@ -651,22 +717,23 @@ function startEdit(id) {
 itemForm.addEventListener("submit", function (event) {
   event.preventDefault(); 
 
-  const title = document.getElementById("item-title").value.trim();
-  if (title === "") {
-    document.getElementById("title-error").style.display = "block";
-    document.getElementById("item-title").focus();
+    
+  const results = {};
+  let firstInvalid = null;
+  Object.keys(FIELD_RULES).forEach(function (fieldId) {
+    results[fieldId] = checkField(fieldId);
+    if (!results[fieldId].valid && firstInvalid === null) {
+      firstInvalid = fieldId;
+    }
+  });
+  if (firstInvalid !== null) {
+    document.getElementById(firstInvalid).focus();
+    showToast("Please fix the highlighted fields", "bad");
     return;
   }
 
- 
-  const tags = document.getElementById("item-tags").value
-    .split(",")
-    .map(function (tag) {
-      return tag.trim().replace(/^#/, "");
-    })
-    .filter(function (tag) {
-      return tag !== "";
-    });
+  const title = document.getElementById("item-title").value.trim();
+  const tags = results["item-tags"].tags;
 
   const dateValue = document.getElementById("item-date").value;
   const durationValue = document.getElementById("item-duration").value;

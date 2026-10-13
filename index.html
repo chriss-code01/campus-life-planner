@@ -173,7 +173,7 @@
         </div>
 
         <div class="card form-card">
-          <form id="item-form">
+          <form id="item-form" novalidate>
             <input type="hidden" id="item-id">
 
             <div class="form-grid">
@@ -196,28 +196,33 @@
 
               <div class="field full">
                 <label for="item-title">Title *</label>
-                <input type="text" id="item-title" placeholder="e.g. Finish calculus problem set">
-                <span id="title-error" class="error-text">Title is required.</span>
+                <input type="text" id="item-title" placeholder="e.g. Finish calculus problem set" aria-describedby>
+                <span id="title-error" class="field-error" aria-live="polite"></span>
               </div>
 
               <div class="field">
                 <label for="item-date">Date and time</label>
-                <input type="datetime-local" id="item-date">
+                <input type="datetime-local" id="item-date" aria-describedby>
+                <span id="date-error" class="field-error" aria-live="polite"></span>
+                
               </div>
 
               <div class="field">
                 <label for="item-duration">Duration (minutes)</label>
-                <input type="number" id="item-duration" min="0" step="5" placeholder="e.g. 90">
+                <input type="number" id="item-duration" min="0" step="5" placeholder="e.g. 90" aria-describedby>
+                <span id="duration-error" class="field-error" aria-live="polite"></span>
               </div>
 
               <div class="field full">
                 <label for="item-tags">Tags (separated by commas)</label>
                 <input type="text" id="item-tags" placeholder="math, homework, exam">
+                <span id="tags-error" class="field-error" aria-live="polite"></span>
               </div>
 
               <div class="field full">
                 <label for="item-notes">Notes</label>
                 <textarea id="item-notes" rows="3" placeholder="Optional details..."></textarea>
+                
               </div>
             </div>
 
@@ -334,6 +339,7 @@
   <!--  pop-up messages -->
   <div id="toasts" class="toasts"></div>
 
+  <script src="validation.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
